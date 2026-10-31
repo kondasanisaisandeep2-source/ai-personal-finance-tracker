@@ -1,48 +1,156 @@
-# AI Personal Finance & Smart Shopping Tracker
+const STORAGE_KEY = 'todo-list-app-items';
+const FILTERS = {
+  all: () => true,
+  active: (item) => !item.completed,
+  completed: (item) => item.completed,
+};
 
-A full-stack Next.js financial planning and shopping comparison application built for personal budgeting, savings tracking, AI-powered insights, and price-aware shopping decisions.
+const todoForm = document.getElementById('todo-form');
+const todoInput = document.getElementById('todo-input');
+const todoList = document.getElementById('todo-list');
+const taskCount = document.getElementById('task-count');
+const clearCompletedBtn = document.getElementById('clear-completed');
+const filterButtons = document.querySelectorAll('.filter-btn');
 
-## Features
+let todos = loadTodos();
+let currentFilter = 'all';
 
-- Monthly income tracking
-- Expense management with categories
-- Savings goals and progress monitoring
-- Unexpected expense planner
-- Budget health analysis and AI style recommendations
-- Smart shopping comparisons with product scoring
-- Responsive dashboard with dark/light mode
-- Authentication, validation, and protected user data
+function loadTodos() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error('Failed to load todos:', error);
+    return [];
+  }
+}
 
-## Tech stack
+function saveTodos() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+}
 
-- Next.js 14
-- TypeScript
-- Prisma ORM
-- SQLite for local development (easy startup)
-- Tailwind CSS
-- PostgreSQL-ready schema structure
-- Custom cookie-based auth with hashed passwords
+function render() {
+  const visibleTodos = todos.filter(FILTERS[currentFilter] || FILTERS.all);
 
-## Local setup
+  if (visibleTodos.length === 0) {
+    todoList.innerHTML = '<li class="empty-state">No tasks here yet. Add one to get started.</li>';
+  } else {
+    todoList.innerHTML = visibleTodos
+      .map(
+        (todo) => `
+          <li class="todo-item ${todo.completed ? 'completed' : ''}" data-id="${todo.id}">
+            <div class="todo-main">
+              <input
+                class="todo-check"
+                type="checkbox"
+                data-action="toggle"
+                ${todo.completed ? 'checked' : ''}
+                aria-label="Toggle task: ${todo.text}"
+              />
+              <span class="todo-text">${escapeHtml(todo.text)}</span>
+            </div>
+            <div class="todo-actions">
+              <button class="delete-btn" type="button" data-action="delete">Delete</button>
+            </div>
+          </li>
+        `
+      )
+      .join('');
+  }
 
-1. Install dependencies:
-   npm install
-2. Create environment file:
-   cp .env.example .env
-3. Generate and push database schema:
-   npx prisma generate
-   npx prisma db push
-4. Start the app:
-   npm run dev
+  const activeCount = todos.filter((todo) => !todo.completed).length;
+  taskCount.textContent = String(activeCount);
+}
 
-Visit http://localhost:3000
+function escapeHtml(value) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
-## Default login
+function addTodo(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return;
 
-This app is designed for a fresh local setup. Create an account from the registration page, then sign in.
+  todos.unshift({
+    id: crypto.randomUUID(),
+    text: trimmed,
+    completed: false,
+    createdAt: new Date().toISOString(),
+  });
 
-## Important notes
+  saveTodos();
+  render();
+}
 
-- No real purchases are made automatically.
-- Product comparisons are local and user-driven.
-- Paid services or external marketplace purchases require explicit approval before integration.
+function toggleTodo(id) {
+  todos = todos.map((todo) =>
+    todo.id === id ? { ...todo, completed: !todo.completed } : todo
+  );
+  saveTodos();
+  render();
+}
+
+function deleteTodo(id) {
+  todos = todos.filter((todo) => todo.id !== id);
+  saveTodos();
+  render();
+}
+
+function clearCompleted() {
+  todos = todos.filter((todo) => !todo.completed);
+  saveTodos();
+  render();
+}
+
+function setFilter(filter) {
+  currentFilter = filter;
+  filterButtons.forEach((button) => {
+    const isActive = button.dataset.filter === filter;
+    button.classList.toggle('active', isActive);
+  });
+  render();
+}
+
+todoForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const value = todoInput.value;
+  addTodo(value);
+  todoInput.value = '';
+  todoInput.focus();
+});
+
+todoList.addEventListener('click', (event) => {
+  const actionButton = event.target.closest('[data-action]');
+  if (!actionButton) return;
+
+  const item = actionButton.closest('.todo-item');
+  if (!item) return;
+
+  const todoId = item.dataset.id;
+  const action = actionButton.dataset.action;
+
+  if (action === 'delete') {
+    deleteTodo(todoId);
+  }
+});
+
+todoList.addEventListener('change', (event) => {
+  if (event.target.matches('.todo-check')) {
+    const item = event.target.closest('.todo-item');
+    if (!item) return;
+    toggleTodo(item.dataset.id);
+  }
+});
+
+clearCompletedBtn.addEventListener('click', clearCompleted);
+filterButtons.forEach((button) => {
+  button.addEventListener('click', () => setFilter(button.dataset.filter));
+});
+
+render();
