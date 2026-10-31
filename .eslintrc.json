@@ -1,0 +1,4 @@
+export default {
+  parser: 'typescript',
+  ignorePatterns: ['.next', 'node_modules'],
+};

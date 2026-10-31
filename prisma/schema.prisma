@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(cuid())
+  email         String          @unique
+  name          String
+  passwordHash  String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  incomes       Income[]
+  expenses      Expense[]
+  savingsGoals  SavingsGoal[]
+  productWatches ProductWatch[]
+}
+
+model Income {
+  id          String   @id @default(cuid())
+  userId      String
+  source      String
+  amount      Float
+  receivedAt  DateTime
+  note        String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  userId      String
+  category    String
+  amount      Float
+  spentAt     DateTime
+  description String
+  note        String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SavingsGoal {
+  id           String   @id @default(cuid())
+  userId       String
+  title        String
+  targetAmount Float
+  savedAmount  Float    @default(0)
+  deadline     DateTime?
+  description  String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProductWatch {
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  category     String
+  desiredPrice Float?
+  currentPrice Float?
+  rating       Float?
+  seller       String?
+  productUrl   String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
